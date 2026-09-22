@@ -1,0 +1,87 @@
+.zone {
+  width: 720px;
+  max-width: 100%;
+  height: 404px;
+  border-radius: 24px;
+  border: 1px dashed var(--color-border);
+  background: rgba(252, 250, 245, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.zone.active {
+  border-color: white;
+  background: rgba(252, 250, 245, 0.32);
+}
+
+.zone.error {
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-style: solid;
+}
+
+.iconWell {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: rgba(238, 233, 222, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--color-text);
+}
+
+.title {
+  font-family: "Sen", sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  color: white;
+  margin: 0;
+  text-align: center;
+}
+
+.subtitle {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: white;
+  margin: 0;
+  text-align: center;
+}
+
+.message {
+  font-family: "Sen", sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  color: white;
+  margin: 0;
+  text-align: center;
+  line-height: 1.45;
+  max-width: 420px;
+}
+
+.chooseButton {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: var(--color-secondary);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+@media (max-width: 640px) {
+  .zone {
+    width: 100%;
+    height: 320px;
+    padding: 24px;
+  }
+}

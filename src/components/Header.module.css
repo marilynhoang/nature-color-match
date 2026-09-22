@@ -1,0 +1,36 @@
+.header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 42px 60px;
+  z-index: 5;
+}
+
+.nav {
+  display: flex;
+  gap: 32px;
+}
+
+.link {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.light .link {
+  color: white;
+}
+
+.active {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding: 24px;
+  }
+}
