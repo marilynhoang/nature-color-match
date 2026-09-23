@@ -4,6 +4,9 @@ import type { PaletteColor } from "./extractPalette";
 
 export type Palette = {
   id: string;
+  /** AI-identified species/subject name when available, editable by the
+   * user, blank if identification wasn't possible (low confidence, or the
+   * classifier didn't run). */
   name: string;
   catalogNo: number;
   createdAt: string; // ISO date
@@ -12,23 +15,6 @@ export type Palette = {
 };
 
 const STORE_KEY = "nature-palette:library";
-
-const SPECIES_NAMES = [
-  "Begonia Rex",
-  "Coleus",
-  "Orchid Mantis",
-  "Rainbow Eucalyptus",
-  "Moss Agate",
-  "Poison Dart Frog",
-  "Peacock Feather",
-  "Sea Glass",
-  "Autumn Maple",
-  "Desert Sage",
-];
-
-function randomName(existingCount: number) {
-  return SPECIES_NAMES[existingCount % SPECIES_NAMES.length];
-}
 
 async function loadAll(): Promise<Palette[]> {
   const data = await get<Palette[]>(STORE_KEY);
@@ -40,13 +26,14 @@ async function saveAll(palettes: Palette[]) {
 }
 
 export async function addPalette(input: {
+  name?: string;
   colors: PaletteColor[];
   imageDataUrl: string;
 }): Promise<Palette> {
   const all = await loadAll();
   const palette: Palette = {
     id: crypto.randomUUID(),
-    name: randomName(all.length),
+    name: input.name?.trim() ?? "",
     catalogNo: all.length + 1,
     createdAt: new Date().toISOString(),
     colors: input.colors,
@@ -88,7 +75,7 @@ export function usePaletteLibrary() {
   }, [refresh]);
 
   const add = useCallback(
-    async (input: { colors: PaletteColor[]; imageDataUrl: string }) => {
+    async (input: { name?: string; colors: PaletteColor[]; imageDataUrl: string }) => {
       const palette = await addPalette(input);
       await refresh();
       return palette;

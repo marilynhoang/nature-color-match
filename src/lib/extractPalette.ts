@@ -20,11 +20,37 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
+/** Saturation, 0-1, from 0-255 RGB — used to bias pixel weight toward the
+ * subject. A blurry background is usually the most desaturated part of a
+ * nature photo; the creature/plant is usually the most vivid. */
+function saturation(r: number, g: number, b: number): number {
+  const max = Math.max(r, g, b) / 255;
+  const min = Math.min(r, g, b) / 255;
+  const lightness = (max + min) / 2;
+  if (max === min) return 0;
+  const d = max - min;
+  return lightness > 0.5 ? d / (2 - max - min) : d / (max + min);
+}
+
 /**
  * Extracts the 3 most prominent colors from an image by downscaling it onto
  * a small canvas, bucketing pixels into coarse color groups, and ranking
- * those groups by how many pixels fall into them. Runs entirely in the
- * browser — the image never leaves the device.
+ * those groups by weighted prominence. Runs entirely in the browser — the
+ * image never leaves the device.
+ *
+ * Plain pixel-count ranking tends to hand the result to the background: a
+ * large, blurry, desaturated backdrop usually covers more pixels than the
+ * subject. Without true subject segmentation (no ML model running
+ * client-side), two heuristics correct for that:
+ *  - saturation weighting: vivid pixels count for more than muted ones, so
+ *    a gray/brown blurred background is discounted relative to the more
+ *    colorful subject.
+ *  - center weighting: pixels near the frame's center count for more, since
+ *    photographers usually center the subject and push background to the
+ *    edges.
+ * The reported hex for a color bucket still averages the *raw* pixel
+ * values in it — only which buckets rank in the top 3, and their share %,
+ * are affected by the weighting.
  */
 export async function extractPalette(file: File): Promise<{
   colors: PaletteColor[];
@@ -40,9 +66,15 @@ export async function extractPalette(file: File): Promise<{
   if (!ctx) throw new Error("Canvas is not supported in this browser.");
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const cx = width / 2;
+  const cy = height / 2;
+  const maxDist = Math.sqrt(cx * cx + cy * cy) || 1;
 
-  const buckets = new Map<string, { r: number; g: number; b: number; count: number }>();
+  const buckets = new Map<
+    string,
+    { r: number; g: number; b: number; count: number; weight: number }
+  >();
   let totalCounted = 0;
 
   for (let i = 0; i < data.length; i += 4) {
@@ -58,6 +90,14 @@ export async function extractPalette(file: File): Promise<{
     if (max > 250 && min > 240) continue;
     if (max < 12) continue;
 
+    const pixelIndex = i / 4;
+    const x = pixelIndex % width;
+    const y = Math.floor(pixelIndex / width);
+    const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2) / maxDist; // 0 (center) - 1 (corner)
+    const centerWeight = 1 - 0.65 * Math.min(dist, 1);
+    const saturationWeight = 0.15 + 0.85 * saturation(r, g, b);
+    const weight = centerWeight * saturationWeight;
+
     const key = [
       Math.round(r / BUCKET_STEP),
       Math.round(g / BUCKET_STEP),
@@ -70,8 +110,9 @@ export async function extractPalette(file: File): Promise<{
       bucket.g += g;
       bucket.b += b;
       bucket.count += 1;
+      bucket.weight += weight;
     } else {
-      buckets.set(key, { r, g, b, count: 1 });
+      buckets.set(key, { r, g, b, count: 1, weight });
     }
     totalCounted += 1;
   }
@@ -81,10 +122,10 @@ export async function extractPalette(file: File): Promise<{
   }
 
   const top = [...buckets.values()]
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.weight - a.weight)
     .slice(0, 3);
 
-  const topTotal = top.reduce((sum, b) => sum + b.count, 0);
+  const topWeightTotal = top.reduce((sum, b) => sum + b.weight, 0);
 
   const colors: PaletteColor[] = top.map((b) => {
     const r = Math.round(b.r / b.count);
@@ -92,7 +133,7 @@ export async function extractPalette(file: File): Promise<{
     const bl = Math.round(b.b / b.count);
     return {
       hex: `#${toHex(r)}${toHex(g)}${toHex(bl)}`.toUpperCase(),
-      share: Math.round((b.count / topTotal) * 100),
+      share: Math.round((b.weight / topWeightTotal) * 100),
     };
   });
 

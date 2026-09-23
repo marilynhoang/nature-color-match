@@ -71,6 +71,10 @@
   align-self: flex-start;
 }
 
+.namePlaceholder {
+  color: var(--color-muted);
+}
+
 .nameInput {
   font-family: var(--font-script);
   font-size: 32px;

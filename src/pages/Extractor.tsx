@@ -7,6 +7,7 @@ import styles from "./Extractor.module.css";
 import { ACCEPTED_TYPES, MAX_FILE_BYTES, extractPalette } from "../lib/extractPalette";
 import type { PaletteColor } from "../lib/extractPalette";
 import { usePaletteLibrary } from "../lib/library";
+import { identifySpeciesFromImage } from "../lib/identifySpecies";
 
 type Status = "empty" | "loading" | "result" | "error";
 
@@ -18,7 +19,7 @@ export default function Extractor() {
   const [colors, setColors] = useState<PaletteColor[]>([]);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { add } = usePaletteLibrary();
+  const { add, rename } = usePaletteLibrary();
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -34,13 +35,20 @@ export default function Extractor() {
         setColors(result.colors);
         setImageDataUrl(result.imageDataUrl);
         setStatus("result");
-        await add({ colors: result.colors, imageDataUrl: result.imageDataUrl });
+        const palette = await add({ colors: result.colors, imageDataUrl: result.imageDataUrl });
+
+        // Identify the species in the background — don't make the user
+        // wait on it. Silently updates the saved palette's name once (or
+        // if) it resolves.
+        identifySpeciesFromImage(result.imageDataUrl).then((name) => {
+          if (name) rename(palette.id, name);
+        });
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : FILE_ERROR);
         setStatus("error");
       }
     },
-    [add]
+    [add, rename]
   );
 
   function reset() {
@@ -79,6 +87,8 @@ export default function Extractor() {
   return (
     <div className={styles.page}>
       <Header light />
+      <div className={styles.lightSweep} aria-hidden="true" />
+      <div className={styles.grain} aria-hidden="true" />
       <div className={styles.overlay} />
       <div className={styles.content}>
         <div className={styles.copy}>

@@ -61,9 +61,10 @@ export default function PaletteModal({ palette, onClose, onDelete, onRename }: P
 
   async function downloadGradient() {
     const dataUrl = await buildGradientDataUrl(hexes);
+    const slug = palette.name.trim() ? palette.name.toLowerCase().replace(/\s+/g, "-") : "nature-palette";
     const a = document.createElement("a");
     a.href = dataUrl;
-    a.download = `${palette.name.toLowerCase().replace(/\s+/g, "-")}-gradient.png`;
+    a.download = `${slug}-gradient.png`;
     a.click();
   }
 
@@ -105,8 +106,12 @@ export default function PaletteModal({ palette, onClose, onDelete, onRename }: P
               }}
             />
           ) : (
-            <button type="button" className={styles.name} onClick={() => setEditingName(true)}>
-              {palette.name}
+            <button
+              type="button"
+              className={`${styles.name} ${palette.name ? "" : styles.namePlaceholder}`}
+              onClick={() => setEditingName(true)}
+            >
+              {palette.name || "add a name"}
             </button>
           )}
 
